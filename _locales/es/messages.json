@@ -1,0 +1,10 @@
+{
+  "extension_desc": {
+    "description": "Descripción de la extensión.",
+    "message": "Bloquear imágenes."
+  },
+  "extension_name": {
+    "description": "Nombre de la extensión.",
+    "message": "Block Image Reloaded"
+  }
+}
