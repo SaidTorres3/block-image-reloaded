@@ -1,10 +1,8 @@
 {
-   "extension_desc": {
-      "description": "Extension description.",
-      "message": "Block images."
-   },
    "extension_name": {
-      "description": "Extension name.",
       "message": "Block Image Reloaded"
+   },
+   "extension_desc": {
+      "message": "Block images."
    }
 }

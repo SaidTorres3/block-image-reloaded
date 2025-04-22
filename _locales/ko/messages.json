@@ -1,10 +1,8 @@
 {
-   "extension_desc": {
-      "description": "확장프로그램 설명.",
-      "message": "이미지를 숨겨줍니다."
-   },
    "extension_name": {
-      "description": "확장프로그램 이름.",
       "message": "이미지 차단 리로디드"
+   },
+   "extension_desc": {
+      "message": "이미지를 숨겨줍니다."
    }
 }
