@@ -30,23 +30,31 @@ chrome.action.onClicked.addListener(function () {
 // Function to update rules and remove CSS based on 'on' state
 function updateRulesAndCSS(onState) {
 	if (onState === '1') {
-		// Add rule to block images
 		chrome.declarativeNetRequest.updateDynamicRules({
 			addRules: [
 				{
 					id: 1,
 					priority: 1,
-					action: { type: "redirect", redirect: { url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==" } },
+					action: { type: "block" },
 					condition: {
-						urlFilter: "*",
-						resourceTypes: ["image", "media"]
+						urlFilter: "|http",
+						resourceTypes: ["image"],
+						excludedInitiatorDomains: [
+							"recaptcha.net",
+							"www.google.com",
+							"google.com",
+							"gstatic.com",
+							"cloudflare.com",
+							"captcha.com",
+							"hcaptcha.com",
+							"cfassets.io"
+						]
 					}
 				}
 			],
 			removeRuleIds: []
 		});
 	} else {
-		// Remove the rule to stop blocking images
 		chrome.declarativeNetRequest.updateDynamicRules({
 			addRules: [],
 			removeRuleIds: [1]
@@ -58,7 +66,6 @@ function updateRulesAndCSS(onState) {
 chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
 	chrome.storage.local.get({ on: '1' }, function (result) {
 		if (result.on === '1' && tab.url && !tab.url.startsWith("chrome://") && !tab.url.startsWith("chrome-extension://")) {
-			// Inject CSS to hide images
 			chrome.scripting.insertCSS({
 				target: { tabId: tabId },
 				css: "img { visibility: hidden; }"
@@ -66,7 +73,6 @@ chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
 				console.warn("Failed to inject CSS:", error);
 			});
 		} else {
-			// Remove the injected CSS if the extension is off
 			chrome.scripting.removeCSS({
 				target: { tabId: tabId },
 				css: "img { visibility: hidden; }"
