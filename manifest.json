@@ -1,5 +1,5 @@
 {
-  "version": "2.2",
+  "version": "2.3",
   "manifest_version": 3,
   "background": {
     "service_worker": "background.js",
@@ -31,7 +31,7 @@
   ],
   "browser_specific_settings": {
     "gecko": {
-      "id": "block-image-reloaded@saidtorres.com",
+      "id": "block-image-reloaded@saidtorres3.com",
       "strict_min_version": "109.0"
     }
   }

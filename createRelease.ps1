@@ -6,6 +6,7 @@ $tempFolder = "temp_extension"
 $filesToInclude = @(
     "manifest.json",
     "background.js",
+    "content.js",
     "_locales",
     "images"
 )
