@@ -19,8 +19,16 @@
     "48": "images/icon48.png"
   },
   "name": "__MSG_extension_name__",
-  "permissions": ["declarativeNetRequest", "declarativeNetRequestWithHostAccess", "activeTab", "storage", "scripting"],
+  "permissions": ["declarativeNetRequest", "declarativeNetRequestWithHostAccess", "declarativeNetRequestFeedback", "activeTab", "storage", "webRequest", "webRequestBlocking"],
   "host_permissions": ["<all_urls>"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
   "browser_specific_settings": {
     "gecko": {
       "id": "block-image-reloaded@saidtorres.com",

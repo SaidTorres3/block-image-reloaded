@@ -1,5 +1,6 @@
 // Polyfill for cross-browser compatibility
 const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
+const isFirefox = typeof browser !== 'undefined';
 
 // Initialize 'on' state in storage
 browserAPI.storage.local.get({ on: '1' }, function (result) {
@@ -30,65 +31,59 @@ browserAPI.action.onClicked.addListener(function () {
 	});
 });
 
-// Function to update rules and remove CSS based on 'on' state
-function updateRulesAndCSS(onState) {
-	if (onState === '1') {
-		browserAPI.declarativeNetRequest.updateDynamicRules({
-			addRules: [
-				{
-					id: 1,
-					priority: 1,
-					action: { type: "block" },
-					condition: {
-						urlFilter: "|http",
-						resourceTypes: ["image"],
-						excludedInitiatorDomains: [
-							"recaptcha.net",
-							"www.google.com",
-							"google.com",
-							"gstatic.com",
-							"cloudflare.com",
-							"captcha.com",
-							"hcaptcha.com",
-							"cfassets.io"
-						]
-					}
-				}
-			],
-			removeRuleIds: []
-		});
-	} else {
-		browserAPI.declarativeNetRequest.updateDynamicRules({
-			addRules: [],
-			removeRuleIds: [1]
-		});
-	}
-}
-
-// Inject or remove CSS based on 'on' state on tab update
-browserAPI.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
+// Firefox uses webRequest API for better blocking performance
+if (isFirefox) {
+	let blockingEnabled = false;
+	
 	browserAPI.storage.local.get({ on: '1' }, function (result) {
-		const isFirefox = typeof browser !== 'undefined';
-		const protectedSchemes = isFirefox 
-			? ["chrome://", "about:", "moz-extension://"]
-			: ["chrome://", "chrome-extension://"];
-		
-		const isProtectedUrl = protectedSchemes.some(scheme => tab.url && tab.url.startsWith(scheme));
-		
-		if (result.on === '1' && tab.url && !isProtectedUrl) {
-			browserAPI.scripting.insertCSS({
-				target: { tabId: tabId },
-				css: "img { visibility: hidden; }"
-			}).catch((error) => {
-				console.warn("Failed to inject CSS:", error);
-			});
-		} else {
-			browserAPI.scripting.removeCSS({
-				target: { tabId: tabId },
-				css: "img { visibility: hidden; }"
-			}).catch((error) => {
-				console.warn("Failed to remove CSS:", error);
-			});
+		blockingEnabled = result.on === '1';
+		console.log("Firefox: Initial blocking state:", blockingEnabled);
+	});
+	
+	browserAPI.storage.onChanged.addListener(function (changes, namespace) {
+		if (namespace === 'local' && changes.on) {
+			blockingEnabled = changes.on.newValue === '1';
+			console.log("Firefox: Blocking state changed to:", blockingEnabled);
 		}
 	});
-});
+	
+	browserAPI.webRequest.onBeforeRequest.addListener(
+		function(details) {
+			console.log("Firefox: Image request detected:", details.url, "Blocking:", blockingEnabled);
+			if (blockingEnabled) {
+				return { cancel: true };
+			}
+			return { cancel: false };
+		},
+		{ urls: ["<all_urls>"], types: ["image"] },
+		["blocking"]
+	);
+}
+
+// Function to update rules and remove CSS based on 'on' state
+function updateRulesAndCSS(onState) {
+	// Chrome uses declarativeNetRequest
+	if (!isFirefox) {
+		if (onState === '1') {
+			browserAPI.declarativeNetRequest.updateDynamicRules({
+				addRules: [
+					{
+						id: 1,
+						priority: 1,
+						action: { type: "block" },
+						condition: {
+							urlFilter: "*",
+							resourceTypes: ["image"]
+						}
+					}
+				],
+				removeRuleIds: []
+			});
+		} else {
+			browserAPI.declarativeNetRequest.updateDynamicRules({
+				addRules: [],
+				removeRuleIds: [1]
+			});
+		}
+	}
+}
