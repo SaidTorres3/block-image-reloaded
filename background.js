@@ -34,21 +34,21 @@ browserAPI.action.onClicked.addListener(function () {
 // Firefox uses webRequest API for better blocking performance
 if (isFirefox) {
 	let blockingEnabled = false;
-	
+
 	browserAPI.storage.local.get({ on: '1' }, function (result) {
 		blockingEnabled = result.on === '1';
 		console.log("Firefox: Initial blocking state:", blockingEnabled);
 	});
-	
+
 	browserAPI.storage.onChanged.addListener(function (changes, namespace) {
 		if (namespace === 'local' && changes.on) {
 			blockingEnabled = changes.on.newValue === '1';
 			console.log("Firefox: Blocking state changed to:", blockingEnabled);
 		}
 	});
-	
+
 	browserAPI.webRequest.onBeforeRequest.addListener(
-		function(details) {
+		function (details) {
 			console.log("Firefox: Image request detected:", details.url, "Blocking:", blockingEnabled);
 			if (blockingEnabled) {
 				return { cancel: true };
