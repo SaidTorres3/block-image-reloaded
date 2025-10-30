@@ -1,5 +1,5 @@
 {
-  "version": "2.3.2",
+  "version": "2.3.3",
   "manifest_version": 3,
   "background": {
     "service_worker": "background.js"
@@ -23,7 +23,8 @@
     "declarativeNetRequestWithHostAccess",
     "declarativeNetRequestFeedback",
     "activeTab",
-    "storage"
+    "storage",
+    "contextMenus"
   ],
   "host_permissions": ["<all_urls>"],
   "content_scripts": [

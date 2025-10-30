@@ -4,5 +4,11 @@
    },
    "extension_desc": {
       "message": "이미지를 숨겨줍니다."
+   },
+   "context_menu_block": {
+      "message": "이미지 차단"
+   },
+   "context_menu_unblock": {
+      "message": "이미지 차단 해제"
    }
 }

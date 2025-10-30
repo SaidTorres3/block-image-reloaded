@@ -4,5 +4,11 @@
   },
   "extension_desc": {
     "message": "Bloquear imagens."
+  },
+  "context_menu_block": {
+    "message": "Bloquear imagens"
+  },
+  "context_menu_unblock": {
+    "message": "Desbloquear imagens"
   }
 }

@@ -4,5 +4,11 @@
   },
   "extension_desc": {
     "message": "حظر الصور."
+  },
+  "context_menu_block": {
+    "message": "حظر الصور"
+  },
+  "context_menu_unblock": {
+    "message": "إلغاء حظر الصور"
   }
 }

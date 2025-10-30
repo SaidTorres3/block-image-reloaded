@@ -4,5 +4,11 @@
   },
   "extension_desc": {
     "message": "画像をブロックします."
+  },
+  "context_menu_block": {
+    "message": "画像をブロック"
+  },
+  "context_menu_unblock": {
+    "message": "画像のブロックを解除"
   }
 }

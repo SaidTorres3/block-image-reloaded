@@ -2,10 +2,54 @@
 const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 const isFirefox = typeof browser !== 'undefined';
 
+// Context menu ID
+const CONTEXT_MENU_ID = 'toggle-block-images';
+
 // Initialize 'on' state in storage
 browserAPI.storage.local.get({ on: '1' }, async function (result) {
 	updateIcon(result.on);
 	await updateRulesAndCSS(result.on);
+	createContextMenu(result.on);
+});
+
+// Function to create/update context menu
+function createContextMenu(onState) {
+	browserAPI.contextMenus.remove(CONTEXT_MENU_ID, function() {
+		// Ignore errors if menu doesn't exist yet
+		if (browserAPI.runtime.lastError) {
+			// Menu doesn't exist, which is fine
+		}
+		
+		// Create the context menu with the appropriate title
+		const title = onState === '1' 
+			? browserAPI.i18n.getMessage('context_menu_unblock')
+			: browserAPI.i18n.getMessage('context_menu_block');
+		
+		browserAPI.contextMenus.create({
+			id: CONTEXT_MENU_ID,
+			title: title,
+			contexts: ['page', 'frame', 'selection', 'link', 'editable', 'image', 'video', 'audio']
+		});
+	});
+}
+
+// Listen for context menu clicks
+browserAPI.contextMenus.onClicked.addListener(function(info, tab) {
+	if (info.menuItemId === CONTEXT_MENU_ID) {
+		// Toggle the state
+		browserAPI.storage.local.get({ on: '1' }, async function (result) {
+			const newState = result.on === '1' ? '0' : '1';
+			browserAPI.storage.local.set({ on: newState }, async function () {
+				updateIcon(newState);
+				await updateRulesAndCSS(newState);
+				createContextMenu(newState);
+				// Reload the tab where the context menu was clicked
+				if (tab && tab.id) {
+					browserAPI.tabs.reload(tab.id);
+				}
+			});
+		});
+	}
 });
 
 // Function to update icon based on 'on' state
@@ -21,6 +65,7 @@ browserAPI.action.onClicked.addListener(function () {
 		browserAPI.storage.local.set({ on: newState }, async function () {
 			updateIcon(newState);
 			await updateRulesAndCSS(newState);
+			createContextMenu(newState);
 			// Reload the current active tab to apply changes
 			browserAPI.tabs.query({ active: true, currentWindow: true }, function (tabs) {
 				if (tabs[0]) {

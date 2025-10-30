@@ -4,5 +4,11 @@
   },
   "extension_desc": {
     "message": "Bilder blockieren."
+  },
+  "context_menu_block": {
+    "message": "Bilder blockieren"
+  },
+  "context_menu_unblock": {
+    "message": "Bilder freigeben"
   }
 }

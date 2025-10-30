@@ -4,5 +4,11 @@
   },
   "extension_desc": {
     "message": "छवियों को अवरुद्ध करें।"
+  },
+  "context_menu_block": {
+    "message": "छवियों को अवरुद्ध करें"
+  },
+  "context_menu_unblock": {
+    "message": "छवियों को अनब्लॉक करें"
   }
 }

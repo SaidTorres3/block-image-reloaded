@@ -4,5 +4,11 @@
   },
   "extension_desc": {
     "message": "屏蔽图片."
+  },
+  "context_menu_block": {
+    "message": "屏蔽图片"
+  },
+  "context_menu_unblock": {
+    "message": "取消屏蔽图片"
   }
 }
