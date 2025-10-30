@@ -3,9 +3,9 @@ const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 const isFirefox = typeof browser !== 'undefined';
 
 // Initialize 'on' state in storage
-browserAPI.storage.local.get({ on: '1' }, function (result) {
+browserAPI.storage.local.get({ on: '1' }, async function (result) {
 	updateIcon(result.on);
-	updateRulesAndCSS(result.on);
+	await updateRulesAndCSS(result.on);
 });
 
 // Function to update icon based on 'on' state
@@ -16,11 +16,11 @@ function updateIcon(onState) {
 
 // Toggle 'on' state when icon is clicked
 browserAPI.action.onClicked.addListener(function () {
-	browserAPI.storage.local.get({ on: '1' }, function (result) {
+	browserAPI.storage.local.get({ on: '1' }, async function (result) {
 		const newState = result.on === '1' ? '0' : '1';
-		browserAPI.storage.local.set({ on: newState }, function () {
+		browserAPI.storage.local.set({ on: newState }, async function () {
 			updateIcon(newState);
-			updateRulesAndCSS(newState);
+			await updateRulesAndCSS(newState);
 			// Reload the current active tab to apply changes
 			browserAPI.tabs.query({ active: true, currentWindow: true }, function (tabs) {
 				if (tabs[0]) {
@@ -61,29 +61,39 @@ if (isFirefox) {
 }
 
 // Function to update rules and remove CSS based on 'on' state
-function updateRulesAndCSS(onState) {
+async function updateRulesAndCSS(onState) {
 	// Chrome uses declarativeNetRequest
 	if (!isFirefox) {
+		// Get existing dynamic rules
+		const existingRules = await browserAPI.declarativeNetRequest.getDynamicRules();
+		const ruleExists = existingRules.some(rule => rule.id === 1);
+		
 		if (onState === '1') {
-			browserAPI.declarativeNetRequest.updateDynamicRules({
-				addRules: [
-					{
-						id: 1,
-						priority: 1,
-						action: { type: "block" },
-						condition: {
-							urlFilter: "*",
-							resourceTypes: ["image"]
+			// If rule doesn't exist, add it. If it exists, do nothing (it's already blocking)
+			if (!ruleExists) {
+				await browserAPI.declarativeNetRequest.updateDynamicRules({
+					addRules: [
+						{
+							id: 1,
+							priority: 1,
+							action: { type: "block" },
+							condition: {
+								urlFilter: "*",
+								resourceTypes: ["image"]
+							}
 						}
-					}
-				],
-				removeRuleIds: []
-			});
+					],
+					removeRuleIds: []
+				});
+			}
 		} else {
-			browserAPI.declarativeNetRequest.updateDynamicRules({
-				addRules: [],
-				removeRuleIds: [1]
-			});
+			// Remove the rule if it exists
+			if (ruleExists) {
+				await browserAPI.declarativeNetRequest.updateDynamicRules({
+					addRules: [],
+					removeRuleIds: [1]
+				});
+			}
 		}
 	}
 }
