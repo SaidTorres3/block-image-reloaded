@@ -48,7 +48,17 @@ async function updateRulesAndCSS(onState) {
 						action: { type: "block" },
 						condition: {
 							urlFilter: "*",
-							resourceTypes: ["image"]
+							resourceTypes: ["image"],
+							excludedInitiatorDomains: [
+								"recaptcha.net",
+								"www.google.com",
+								"google.com",
+								"gstatic.com",
+								"cloudflare.com",
+								"captcha.com",
+								"hcaptcha.com",
+								"cfassets.io"
+							]
 						}
 					}
 				],
