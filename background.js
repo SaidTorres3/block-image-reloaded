@@ -78,63 +78,93 @@ async function updateRulesAndCSS(onState) {
 
 // ========== Context Menu Feature (Desktop only) ==========
 // This code runs independently and won't affect the main functionality
-setTimeout(function() {
-	try {
-		if (browserAPI.contextMenus) {
-			const CONTEXT_MENU_ID = 'toggle-block-images';
-			
-			// Get initial state to set correct title
-			browserAPI.storage.local.get({ on: '1' }, function (result) {
-				const title = result.on === '1' 
-					? browserAPI.i18n.getMessage('context_menu_unblock')
-					: browserAPI.i18n.getMessage('context_menu_block');
-				
-				// Create context menu with correct title from the start
+if (browserAPI.contextMenus) {
+	const CONTEXT_MENU_ID = 'toggle-block-images';
+
+	// Helper: get title for state ('1' = blocking enabled)
+	function getTitleForState(onValue) {
+		const v = String(onValue);
+		return v === '1'
+			? browserAPI.i18n.getMessage('context_menu_unblock')
+			: browserAPI.i18n.getMessage('context_menu_block');
+	}
+
+	// Helper: try updating the context menu title, and create it if it doesn't exist.
+	function setContextMenuTitle(onValue) {
+		const title = getTitleForState(onValue);
+
+		// Try to update first (works if item already exists)
+		try {
+			browserAPI.contextMenus.update(CONTEXT_MENU_ID, { title: title }, function() {
+				if (browserAPI.runtime && browserAPI.runtime.lastError) {
+					// If update failed because it doesn't exist (or any other error), try creating it.
+					// Log the error for diagnostics but proceed to create.
+					console.log('contextMenus.update failed:', browserAPI.runtime.lastError.message || browserAPI.runtime.lastError);
+					browserAPI.contextMenus.create({
+						id: CONTEXT_MENU_ID,
+						title: title,
+						contexts: ['all']
+					}, function() {
+						if (browserAPI.runtime && browserAPI.runtime.lastError) {
+							console.log('contextMenus.create failed:', browserAPI.runtime.lastError.message || browserAPI.runtime.lastError);
+						} else {
+							console.log('Context menu created successfully');
+						}
+					});
+				}
+			});
+		} catch (e) {
+			// Defensive: if contextMenus.update throws synchronously, attempt to create
+			console.log('contextMenus.update threw, creating menu. Error:', e && e.message ? e.message : e);
+			try {
 				browserAPI.contextMenus.create({
 					id: CONTEXT_MENU_ID,
 					title: title,
 					contexts: ['all']
 				}, function() {
-					if (browserAPI.runtime.lastError) {
-						console.log('Context menu creation failed:', browserAPI.runtime.lastError);
+					if (browserAPI.runtime && browserAPI.runtime.lastError) {
+						console.log('contextMenus.create failed:', browserAPI.runtime.lastError.message || browserAPI.runtime.lastError);
 					} else {
 						console.log('Context menu created successfully');
 					}
 				});
-			});
-			
-			// Listen for storage changes to update menu
-			browserAPI.storage.onChanged.addListener(function(changes, namespace) {
-				if (namespace === 'local' && changes.on && browserAPI.contextMenus) {
-					const title = changes.on.newValue === '1' 
-						? browserAPI.i18n.getMessage('context_menu_unblock')
-						: browserAPI.i18n.getMessage('context_menu_block');
-					
-					browserAPI.contextMenus.update(CONTEXT_MENU_ID, { title: title }, function() {
-						if (browserAPI.runtime.lastError) {
-							// Ignore errors
-						}
-					});
-				}
-			});
-			
-			// Handle context menu clicks
-			browserAPI.contextMenus.onClicked.addListener(function(info, tab) {
-				if (info.menuItemId === CONTEXT_MENU_ID) {
-					browserAPI.storage.local.get({ on: '1' }, async function (result) {
-						const newState = result.on === '1' ? '0' : '1';
-						browserAPI.storage.local.set({ on: newState }, async function () {
-							updateIcon(newState);
-							await updateRulesAndCSS(newState);
-							if (tab && tab.id) {
-								browserAPI.tabs.reload(tab.id);
-							}
-						});
-					});
-				}
-			});
+			} catch (e2) {
+				console.log('contextMenus.create threw:', e2 && e2.message ? e2.message : e2);
+			}
 		}
-	} catch (e) {
-		console.log('Context menu not available:', e);
 	}
-}, 100);
+
+	// Register the click handler FIRST (immediately, not in a callback)
+	browserAPI.contextMenus.onClicked.addListener(async function(info, tab) {
+		if (info.menuItemId === CONTEXT_MENU_ID) {
+			const result = await new Promise(resolve => {
+				browserAPI.storage.local.get({ on: '1' }, resolve);
+			});
+			const newState = result && String(result.on) === '1' ? '0' : '1';
+
+			await new Promise(resolve => {
+				browserAPI.storage.local.set({ on: newState }, resolve);
+			});
+
+			updateIcon(newState);
+			await updateRulesAndCSS(newState);
+			// Try to update the context menu title immediately
+			setContextMenuTitle(newState);
+			if (tab && tab.id) {
+				browserAPI.tabs.reload(tab.id);
+			}
+		}
+	});
+
+	// Listen for storage changes to update menu (robust against service worker restarts)
+	browserAPI.storage.onChanged.addListener(function(changes, namespace) {
+		if (namespace === 'local' && changes.on && browserAPI.contextMenus) {
+			setContextMenuTitle(changes.on.newValue);
+		}
+	});
+
+	// Ensure the context menu exists with the right title on startup
+	browserAPI.storage.local.get({ on: '1' }, function (result) {
+		setContextMenuTitle(result && result.on ? result.on : '1');
+	});
+}
