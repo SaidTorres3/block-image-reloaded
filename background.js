@@ -8,6 +8,14 @@ browserAPI.storage.local.get({ on: '1' }, async function (result) {
 	await updateRulesAndCSS(result.on);
 });
 
+// Ensure icon is correct on startup
+browserAPI.runtime.onStartup.addListener(function() {
+	browserAPI.storage.local.get({ on: '1' }, async function (result) {
+		updateIcon(result.on);
+		await updateRulesAndCSS(result.on);
+	});
+});
+
 // Function to update icon based on 'on' state
 function updateIcon(onState) {
 	const iconPath = onState === '1' ? "images/icon19.png" : "images/icon19-disabled.png";
