@@ -2,14 +2,83 @@
 const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 const isFirefox = typeof browser !== 'undefined';
 
-// Initialize 'on' state in storage
+// Rule IDs managed by the extension
+const BLOCK_RULE_IMAGE_ID = 1;
+const BLOCK_RULE_XHR_MEDIA_ID = 2;
+const ALLOW_RULE_CAPTCHA_DOMAINS_ID = 10;
+const ALLOW_RULE_CAPTCHA_PATHS_ID = 11;
+
+const ALL_RULE_IDS = [
+	BLOCK_RULE_IMAGE_ID,
+	BLOCK_RULE_XHR_MEDIA_ID,
+	ALLOW_RULE_CAPTCHA_DOMAINS_ID,
+	ALLOW_RULE_CAPTCHA_PATHS_ID
+];
+
+function getBlockingRules() {
+	return [
+		// 1. Block standard image requests globally
+		{
+			id: BLOCK_RULE_IMAGE_ID,
+			priority: 1,
+			action: { type: "block" },
+			condition: {
+				urlFilter: "*",
+				resourceTypes: ["image"]
+			}
+		},
+		// 2. Block image extensions fetched via XHR/Fetch/Media/Other
+		{
+			id: BLOCK_RULE_XHR_MEDIA_ID,
+			priority: 1,
+			action: { type: "block" },
+			condition: {
+				regexFilter: "\\.(jpe?g|png|gif|webp|avif|bmp|ico|svg)($|\\?|#)",
+				isUrlFilterCaseSensitive: false,
+				resourceTypes: ["xmlhttprequest", "other", "media"]
+			}
+		},
+		// 3. Higher-priority Allow rule for known CAPTCHA challenge domains
+		{
+			id: ALLOW_RULE_CAPTCHA_DOMAINS_ID,
+			priority: 2,
+			action: { type: "allow" },
+			condition: {
+				regexFilter: "^https?://([^/]+\\.)?(recaptcha\\.net|hcaptcha\\.com|challenges\\.cloudflare\\.com|arkoselabs\\.com|geetest\\.com)/.*",
+				isUrlFilterCaseSensitive: false,
+				resourceTypes: ["image", "xmlhttprequest", "other", "sub_frame"]
+			}
+		},
+		// 4. Higher-priority Allow rule for captcha URL paths (e.g. google.com/recaptcha)
+		{
+			id: ALLOW_RULE_CAPTCHA_PATHS_ID,
+			priority: 2,
+			action: { type: "allow" },
+			condition: {
+				urlFilter: "*/recaptcha/*",
+				isUrlFilterCaseSensitive: false,
+				resourceTypes: ["image", "xmlhttprequest", "other"]
+			}
+		}
+	];
+}
+
+// Initialize 'on' state in storage on load
 browserAPI.storage.local.get({ on: '1' }, async function (result) {
 	updateIcon(result.on);
 	await updateRulesAndCSS(result.on);
 });
 
-// Ensure icon is correct on startup
+// Ensure icon and rules are set on browser startup
 browserAPI.runtime.onStartup.addListener(function() {
+	browserAPI.storage.local.get({ on: '1' }, async function (result) {
+		updateIcon(result.on);
+		await updateRulesAndCSS(result.on);
+	});
+});
+
+// Ensure icon and rules are set immediately when extension is installed or updated
+browserAPI.runtime.onInstalled.addListener(function() {
 	browserAPI.storage.local.get({ on: '1' }, async function (result) {
 		updateIcon(result.on);
 		await updateRulesAndCSS(result.on);
@@ -39,48 +108,18 @@ browserAPI.action.onClicked.addListener(function () {
 	});
 });
 
-// Function to update rules and remove CSS based on 'on' state
+// Function to update declarativeNetRequest rules based on 'on' state
 async function updateRulesAndCSS(onState) {
-	// Both Chrome and Firefox use declarativeNetRequest
-	const existingRules = await browserAPI.declarativeNetRequest.getDynamicRules();
-	const ruleExists = existingRules.some(rule => rule.id === 1);
-	
 	if (onState === '1') {
-		// If rule doesn't exist, add it. If it exists, do nothing (it's already blocking)
-		if (!ruleExists) {
-			await browserAPI.declarativeNetRequest.updateDynamicRules({
-				addRules: [
-					{
-						id: 1,
-						priority: 1,
-						action: { type: "block" },
-						condition: {
-							urlFilter: "*",
-							resourceTypes: ["image"],
-							excludedInitiatorDomains: [
-								"recaptcha.net",
-								"www.google.com",
-								"google.com",
-								"gstatic.com",
-								"cloudflare.com",
-								"captcha.com",
-								"hcaptcha.com",
-								"cfassets.io"
-							]
-						}
-					}
-				],
-				removeRuleIds: []
-			});
-		}
+		await browserAPI.declarativeNetRequest.updateDynamicRules({
+			removeRuleIds: ALL_RULE_IDS,
+			addRules: getBlockingRules()
+		});
 	} else {
-		// Remove the rule if it exists
-		if (ruleExists) {
-			await browserAPI.declarativeNetRequest.updateDynamicRules({
-				addRules: [],
-				removeRuleIds: [1]
-			});
-		}
+		await browserAPI.declarativeNetRequest.updateDynamicRules({
+			removeRuleIds: ALL_RULE_IDS,
+			addRules: []
+		});
 	}
 }
 
